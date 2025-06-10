@@ -3,31 +3,47 @@ import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import '../core/config/app_colors.dart';
 import '../models/quote_model.dart';
+import '../core/services/quote_service.dart';
+import '../core/services/image_generator_service.dart';
 
 class QuoteDisplayCard extends StatefulWidget {
   final QuoteModel quote;
+  final VoidCallback? onFavoriteChanged;
 
-  const QuoteDisplayCard({super.key, required this.quote});
+  const QuoteDisplayCard({
+    super.key, 
+    required this.quote,
+    this.onFavoriteChanged,
+  });
 
   @override
   State<QuoteDisplayCard> createState() => _QuoteDisplayCardState();
 }
 
 class _QuoteDisplayCardState extends State<QuoteDisplayCard> {
-  late bool _isFavorite;
+  final QuoteService _quoteService = QuoteService();
+  bool _isUpdatingFavorite = false;
+  bool _isDownloading = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _isFavorite = widget.quote.isFavorite;
-  }
-
-  void _toggleFavorite() {
+  void _toggleFavorite() async {
+    if (_isUpdatingFavorite) return;
+    
     setState(() {
-      _isFavorite = !_isFavorite;
-      widget.quote.isFavorite = _isFavorite;
+      _isUpdatingFavorite = true;
     });
-    _showToast(_isFavorite ? "Added to favorites" : "Removed from favorites");
+
+    final success = await _quoteService.toggleFavorite(widget.quote);
+    
+    if (success) {
+      _showToast(widget.quote.isFavorite ? "Added to favorites" : "Removed from favorites");
+      widget.onFavoriteChanged?.call();
+    } else {
+      _showToast("Failed to update favorites");
+    }
+
+    setState(() {
+      _isUpdatingFavorite = false;
+    });
   }
 
   void _shareQuote() {
@@ -42,9 +58,22 @@ class _QuoteDisplayCardState extends State<QuoteDisplayCard> {
     _showToast("Quote copied to clipboard!");
   }
 
-  void _downloadQuote() {
-    _showToast("Download to Gallery - Not yet implemented.");
-    print("Download quote: ${widget.quote.id}");
+  void _downloadQuote() async {
+    if (_isDownloading) return;
+    
+    setState(() {
+      _isDownloading = true;
+    });
+
+    final success = await ImageGeneratorService.downloadQuoteImage(widget.quote, context);
+    
+    setState(() {
+      _isDownloading = false;
+    });
+
+    if (!success) {
+      _showToast("Failed to download quote image");
+    }
   }
 
   void _showToast(String message) {
@@ -71,7 +100,7 @@ class _QuoteDisplayCardState extends State<QuoteDisplayCard> {
         padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min, // Add this to prevent overflow
+          mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             // Quote text with flexible height
             Text(
@@ -82,7 +111,6 @@ class _QuoteDisplayCardState extends State<QuoteDisplayCard> {
                 color: AppColors.quoteTextColor,
                 height: 1.5,
               ),
-              // Prevent text from overflowing
               softWrap: true,
               overflow: TextOverflow.visible,
             ),
@@ -109,10 +137,12 @@ class _QuoteDisplayCardState extends State<QuoteDisplayCard> {
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   _buildActionButton(
-                    icon: _isFavorite ? Icons.favorite : Icons.favorite_border,
+                    icon: _isUpdatingFavorite 
+                        ? Icons.hourglass_empty 
+                        : (widget.quote.isFavorite ? Icons.favorite : Icons.favorite_border),
                     label: "Favorite",
-                    color: _isFavorite ? activeIconColor : iconColor,
-                    onPressed: _toggleFavorite,
+                    color: widget.quote.isFavorite ? activeIconColor : iconColor,
+                    onPressed: _isUpdatingFavorite ? null : _toggleFavorite,
                   ),
                   _buildActionButton(
                     icon: Icons.share_outlined,
@@ -127,10 +157,10 @@ class _QuoteDisplayCardState extends State<QuoteDisplayCard> {
                     onPressed: _copyQuote,
                   ),
                   _buildActionButton(
-                    icon: Icons.download_outlined,
+                    icon: _isDownloading ? Icons.hourglass_empty : Icons.download_outlined,
                     label: "Download",
                     color: iconColor,
-                    onPressed: _downloadQuote,
+                    onPressed: _isDownloading ? null : _downloadQuote,
                   ),
                 ],
               ),
@@ -145,7 +175,7 @@ class _QuoteDisplayCardState extends State<QuoteDisplayCard> {
     required IconData icon,
     required String label,
     required Color color,
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
   }) {
     return InkWell(
       onTap: onPressed,

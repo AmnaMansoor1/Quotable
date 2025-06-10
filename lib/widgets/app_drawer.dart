@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../core/config/app_colors.dart';
 import '../../features/quotes/screens/quote_of_day_screen.dart';
+import '../../features/quotes/screens/favorites_screen.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -75,10 +76,13 @@ class AppDrawer extends StatelessWidget {
           _buildDrawerItem(
             context: context,
             icon: Icons.favorite_border,
-            text: 'Liked Quotes',
+            text: 'Favorite Quotes',
             onTap: () {
               Navigator.pop(context);
-              // TODO: Navigate to favorites screen
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const FavoritesScreen()),
+              );
             },
           ),
           _buildDrawerItem(

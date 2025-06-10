@@ -39,6 +39,11 @@ dependencies:
   share_plus: ^11.0.0
   http: ^1.4.0
   cloud_functions: ^5.5.2
+  cloud_firestore: ^5.6.9
+  shared_preferences: ^2.5.3
+  path_provider: ^2.1.5
+  permission_handler: ^12.0.0+1
+  gal: ^2.3.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -62,8 +67,19 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
+  assets:
+  - assets/quotes/alone.json
+  - assets/quotes/angry.json
+  - assets/quotes/attitude.json
+  - assets/quotes/breakup.json
+  - assets/quotes/emotional.json
+  - assets/quotes/family.json
+  - assets/quotes/friends.json
+  - assets/quotes/funny.json
+  - assets/quotes/love.json
+  - assets/quotes/motivational.json
+  - assets/quotes/success.json
+  - assets/quotes/wisdom.json
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
