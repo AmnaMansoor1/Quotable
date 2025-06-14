@@ -3,17 +3,20 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
-import '../.././models/quote_model.dart';
-import 'favorites_service.dart'; // Use this for Firestore
-// import 'local_favorites_service.dart'; // Use this for SharedPreferences
+import '../../models/quote_model.dart';
+import 'local_favorites_service.dart';
 
 class QuoteService {
   // Using ZenQuotes API - no CORS restrictions
   static const String baseUrl = 'https://zenquotes.io/api';
   
   // Initialize favorites service
-  final FavoritesService _favoritesService = FavoritesService();
-  // final LocalFavoritesService _favoritesService = LocalFavoritesService(); // For local storage
+  final LocalFavoritesService _favoritesService = LocalFavoritesService();
+  
+  // Cache for quotes to improve performance
+  static final Map<String, List<QuoteModel>> _quotesCache = {};
+  static final Map<String, DateTime> _cacheTimestamps = {};
+  static const Duration _cacheExpiry = Duration(minutes: 10);
   
   // Map our app categories to available quote types
   static Map<String, String> categoryToTypeMap = {
@@ -31,27 +34,42 @@ class QuoteService {
     'wisdom': 'wisdom',
   };
 
-  // Get quotes by category with favorite status
+  // Get quotes by category with caching and faster loading
   Future<List<QuoteModel>> getQuotesByCategory(String categoryId) async {
+    print('📚 Fetching quotes for category: $categoryId');
+    
+    // Check cache first
+    if (_quotesCache.containsKey(categoryId) && _cacheTimestamps.containsKey(categoryId)) {
+      final cacheTime = _cacheTimestamps[categoryId]!;
+      if (DateTime.now().difference(cacheTime) < _cacheExpiry) {
+        print('💾 Using cached quotes for $categoryId');
+        final cachedQuotes = _quotesCache[categoryId]!;
+        // Update favorite status for cached quotes
+        for (var quote in cachedQuotes) {
+          quote.isFavorite = await _favoritesService.isQuoteFavorited(quote.id);
+        }
+        return cachedQuotes;
+      }
+    }
+    
+    // Load local quotes immediately (fast fallback)
+    final localQuotes = await _getLocalQuotes(categoryId);
+    
+    // Try API with very short timeout for better UX
     try {
-      print('Fetching quotes for category: $categoryId');
-      
-      // Try ZenQuotes API first
       final response = await http.get(
         Uri.parse('$baseUrl/quotes'),
         headers: {
           'Accept': 'application/json',
           'User-Agent': 'QuoteableApp/1.0',
         },
-      ).timeout(const Duration(seconds: 10));
-
-      List<QuoteModel> quotes = [];
+      ).timeout(const Duration(seconds: 2)); // Very short timeout
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         
-        // Filter and transform quotes
-        quotes = data.take(10).map((quoteData) {
+        // Transform the data to match your QuoteModel
+        final quotes = data.take(15).map((quoteData) {
           return QuoteModel(
             id: DateTime.now().millisecondsSinceEpoch.toString() + Random().nextInt(1000).toString(),
             text: quoteData['q'] ?? quoteData['text'] ?? '',
@@ -59,45 +77,50 @@ class QuoteService {
             isFavorite: false,
           );
         }).where((quote) => quote.text.isNotEmpty).toList();
+        
+        if (quotes.isNotEmpty) {
+          // Cache the quotes
+          _quotesCache[categoryId] = quotes;
+          _cacheTimestamps[categoryId] = DateTime.now();
+          
+          // Update favorite status for all quotes
+          for (var quote in quotes) {
+            quote.isFavorite = await _favoritesService.isQuoteFavorited(quote.id);
+          }
+          print('✅ API quotes loaded and cached for $categoryId');
+          return quotes;
+        }
       }
-
-      // Fallback to local assets if API fails
-      if (quotes.isEmpty) {
-        print('Using local asset quotes for category: $categoryId');
-        quotes = await _getLocalQuotes(categoryId);
-      }
-
-      // Update favorite status for all quotes
-      for (var quote in quotes) {
-        quote.isFavorite = await _favoritesService.isQuoteFavorited(quote.id);
-      }
-
-      return quotes;
     } catch (e) {
-      print('API error: $e');
-      // Fallback to local assets
-      final quotes = await _getLocalQuotes(categoryId);
-      
-      // Update favorite status
-      for (var quote in quotes) {
-        quote.isFavorite = await _favoritesService.isQuoteFavorited(quote.id);
-      }
-      
-      return quotes;
+      print('⚠️ API error (using local quotes): $e');
     }
+    
+    // Use local quotes as fallback
+    print('📖 Using local asset quotes for category: $categoryId');
+    
+    // Cache local quotes too
+    _quotesCache[categoryId] = localQuotes;
+    _cacheTimestamps[categoryId] = DateTime.now();
+    
+    // Update favorite status
+    for (var quote in localQuotes) {
+      quote.isFavorite = await _favoritesService.isQuoteFavorited(quote.id);
+    }
+    
+    return localQuotes;
   }
 
-  // Get random quote with favorite status
+  // Get random quote with caching
   Future<QuoteModel> getRandomQuote() async {
     try {
-      // Try ZenQuotes random quote
+      // Try ZenQuotes random quote with short timeout
       final response = await http.get(
         Uri.parse('$baseUrl/random'),
         headers: {
           'Accept': 'application/json',
           'User-Agent': 'QuoteableApp/1.0',
         },
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(const Duration(seconds: 3));
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
@@ -130,15 +153,28 @@ class QuoteService {
     return quote;
   }
 
-  // Search quotes with favorite status
+  // Search quotes with caching
   Future<List<QuoteModel>> searchQuotes(String query) async {
-    print('Searching local quotes for: $query');
+    print('🔍 Searching local quotes for: $query');
     
     final allQuotes = <QuoteModel>[];
     
-    // Search through all local categories
+    // Search through cached quotes first, then local
     for (String category in categoryToTypeMap.keys) {
-      final categoryQuotes = await _getLocalQuotes(category);
+      List<QuoteModel> categoryQuotes;
+      
+      // Use cached quotes if available
+      if (_quotesCache.containsKey(category) && _cacheTimestamps.containsKey(category)) {
+        final cacheTime = _cacheTimestamps[category]!;
+        if (DateTime.now().difference(cacheTime) < _cacheExpiry) {
+          categoryQuotes = _quotesCache[category]!;
+        } else {
+          categoryQuotes = await _getLocalQuotes(category);
+        }
+      } else {
+        categoryQuotes = await _getLocalQuotes(category);
+      }
+      
       allQuotes.addAll(categoryQuotes);
     }
     
@@ -178,7 +214,7 @@ class QuoteService {
     return await _favoritesService.getFavoriteQuotes();
   }
 
-  // Load quotes from local assets
+  // Load quotes from local assets with caching
   Future<List<QuoteModel>> _getLocalQuotes(String categoryId) async {
     try {
       final String jsonString = await rootBundle.loadString('assets/quotes/${categoryId}.json');
@@ -206,5 +242,12 @@ class QuoteService {
       author: 'Abraham Lincoln',
       isFavorite: false,
     );
+  }
+
+  // Clear cache (useful for refresh)
+  static void clearCache() {
+    _quotesCache.clear();
+    _cacheTimestamps.clear();
+    print('🗑️ Quote cache cleared');
   }
 }

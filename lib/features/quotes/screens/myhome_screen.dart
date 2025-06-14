@@ -4,6 +4,10 @@ import '../../../models/category_model.dart';
 import '../../../widgets/app_drawer.dart';
 import '../../../widgets/category_card.dart';
 import '../../../widgets/search_bar_widget.dart';
+import '../../../core/services/banner_ad_service.dart';
+import '../../../core/services/admob_service.dart';
+import '../../../core/services/interstitial_ad_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -30,12 +34,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<CategoryModel> _filteredCategories = [];
   final TextEditingController _searchController = TextEditingController();
+  bool _showDebugInfo = false;
+  int _clickCount = 0;
 
   @override
   void initState() {
     super.initState();
     _filteredCategories = _allCategories;
     _searchController.addListener(_filterCategories);
+    _loadClickCount();
+  }
+
+  Future<void> _loadClickCount() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _clickCount = prefs.getInt('category_click_count') ?? 0;
+    });
   }
 
   void _filterCategories() {
@@ -62,12 +76,67 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Quoteable'),
+        title: const Text('Quotable'),
         centerTitle: false,
+        actions: [
+          // Debug button
+          IconButton(
+            icon: Icon(_showDebugInfo ? Icons.bug_report : Icons.bug_report_outlined),
+            onPressed: () {
+              setState(() {
+                _showDebugInfo = !_showDebugInfo;
+              });
+            },
+            tooltip: 'Toggle Debug Info',
+          ),
+          // Test ad button
+          IconButton(
+            icon: const Icon(Icons.ads_click),
+            onPressed: () {
+              print('🧪 Testing interstitial ad...');
+              final debugInfo = InterstitialAdService.getDebugInfo();
+              print('Debug info: $debugInfo');
+              InterstitialAdService.forceShowAd();
+            },
+            tooltip: 'Test Interstitial Ad',
+          ),
+          // Reset counter button
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () async {
+              await InterstitialAdService.resetClickCounter();
+              await _loadClickCount();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Click counter reset!')),
+              );
+            },
+            tooltip: 'Reset Click Counter',
+          ),
+        ],
       ),
       drawer: const AppDrawer(),
       body: Column(
         children: <Widget>[
+          // Debug info panel
+          if (_showDebugInfo)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(8),
+              color: Colors.blue.withOpacity(0.1),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('🐛 DEBUG INFO', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text('AdMob Supported: ${AdMobService.isSupported}'),
+                  Text('AdMob Initialized: ${AdMobService.isInitialized}'),
+                  Text('Interstitial Loaded: ${InterstitialAdService.isAdLoaded}'),
+                  Text('Click Count: $_clickCount (next ad: ${(_clickCount + 1) % 2 == 0 ? "YES" : "NO"})'),
+                  Text('Banner ID: ${AdMobService.bannerAdUnitId}'),
+                  Text('Interstitial ID: ${AdMobService.interstitialAdUnitId}'),
+                ],
+              ),
+            ),
+          
           SearchBarWidget(
             controller: _searchController,
             hintText: 'Search Category',
@@ -94,18 +163,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
           ),
-          Container(
-            height: 50,
-            color: AppColors.adPlaceholderBackground,
-            alignment: Alignment.center,
-            child: const Text(
-              "AdMob Banner Ad Placeholder",
-              style: TextStyle(color: AppColors.adPlaceholderText, fontSize: 12),
-            ),
-          ),
+          // Banner ad at the bottom with debug info
+          BannerAdService(showDebugInfo: _showDebugInfo),
         ],
       ),
     );
   }
 }
-

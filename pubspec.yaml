@@ -44,6 +44,11 @@ dependencies:
   path_provider: ^2.1.5
   permission_handler: ^12.0.0+1
   gal: ^2.3.1
+  flutter_local_notifications: ^19.2.1
+  timezone: ^0.10.1
+  google_mobile_ads: ^6.0.0
+  provider: ^6.1.5
+  url_launcher: ^6.3.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

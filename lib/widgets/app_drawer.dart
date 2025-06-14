@@ -3,6 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../core/config/app_colors.dart';
 import '../../features/quotes/screens/quote_of_day_screen.dart';
 import '../../features/quotes/screens/favorites_screen.dart';
+import '../../features/settings/screens/notifications_settings_screen.dart';
+import '../../features/auth/screens/premium_features_screen.dart';
+import '../../features/legal/screens/contact_us_screen.dart';
+import '../../features/legal/screens/privacy_policy_screen.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -43,7 +47,7 @@ class AppDrawer extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     const Text(
-                      'Quoteable',
+                      'Quotable',
                       style: TextStyle(
                         color: AppColors.drawerHeaderTextColor,
                         fontSize: 24,
@@ -99,11 +103,26 @@ class AppDrawer extends StatelessWidget {
           ),
           _buildDrawerItem(
             context: context,
-            icon: Icons.refresh_outlined,
-            text: 'Latest Quotes',
+            icon: Icons.notifications_outlined,
+            text: 'Notification Settings',
             onTap: () {
               Navigator.pop(context);
-              // TODO: Navigate to latest quotes screen
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NotificationSettingsScreen()),
+              );
+            },
+          ),
+          _buildDrawerItem(
+            context: context,
+            icon: Icons.star_outline,
+            text: 'Premium Features',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PremiumFeaturesScreen()),
+              );
             },
           ),
           const Divider(color: AppColors.drawerDividerColor, indent: 16, endIndent: 16, height: 16),
@@ -113,7 +132,10 @@ class AppDrawer extends StatelessWidget {
             text: 'Contact Us',
             onTap: () {
               Navigator.pop(context);
-              // TODO: Navigate to contact screen
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ContactUsScreen()),
+              );
             },
           ),
           _buildDrawerItem(
@@ -122,7 +144,10 @@ class AppDrawer extends StatelessWidget {
             text: 'Privacy Policy',
             onTap: () {
               Navigator.pop(context);
-              // TODO: Navigate to privacy policy screen
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()),
+              );
             },
           ),
           const Divider(color: AppColors.drawerDividerColor, indent: 16, endIndent: 16, height: 16),

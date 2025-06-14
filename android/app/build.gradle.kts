@@ -1,4 +1,5 @@
 import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -24,7 +25,7 @@ if (flutterVersionName == null) {
 }
 
 android {
-    namespace = "com.example.demo_project" // Namespace set here
+    namespace = "com.example.demo_project"
 
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.2.12479018"
@@ -32,6 +33,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        // Add this line to enable desugaring
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -65,4 +68,6 @@ flutter {
 
 dependencies {
     implementation("androidx.multidex:multidex:2.0.1")
+    // Add this line for desugaring support
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

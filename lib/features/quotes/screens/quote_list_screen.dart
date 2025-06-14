@@ -3,6 +3,7 @@ import '../../../core/config/app_colors.dart';
 import '../../../models/quote_model.dart';
 import '../../../widgets/quote_display_card.dart';
 import '../../../core/services/quote_service.dart';
+import '../../../core/services/banner_ad_service.dart';
 
 class QuotesListScreen extends StatefulWidget {
   final String categoryName;
@@ -142,10 +143,7 @@ class _QuotesListScreenState extends State<QuotesListScreen> {
               height: 50,
               color: AppColors.adPlaceholderBackground,
               alignment: Alignment.center,
-              child: const Text(
-                "AdMob Banner Ad Placeholder",
-                style: TextStyle(color: AppColors.adPlaceholderText, fontSize: 12),
-              ),
+              child: BannerAdService(),
             ),
           ],
         ),
@@ -153,4 +151,3 @@ class _QuotesListScreenState extends State<QuotesListScreen> {
     );
   }
 }
-
