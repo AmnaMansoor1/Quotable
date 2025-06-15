@@ -28,13 +28,15 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     });
 
     try {
+      print('🔄 Loading favorites...');
       final favorites = await _quoteService.getFavoriteQuotes();
       setState(() {
         _favoriteQuotes = favorites;
         _isLoading = false;
       });
+      print('✅ Loaded ${favorites.length} favorites');
     } catch (e) {
-      print('Error loading favorites: $e');
+      print('❌ Error loading favorites: $e');
       setState(() {
         _isLoading = false;
       });

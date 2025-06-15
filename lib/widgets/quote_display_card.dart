@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import '../core/config/app_colors.dart';
 import '../models/quote_model.dart';
-import '../core/services/quote_service.dart';
 import '../core/services/image_generator_service.dart';
+import '../core/services/favorites_service.dart';
 
 class QuoteDisplayCard extends StatefulWidget {
   final QuoteModel quote;
@@ -21,7 +21,7 @@ class QuoteDisplayCard extends StatefulWidget {
 }
 
 class _QuoteDisplayCardState extends State<QuoteDisplayCard> {
-  final QuoteService _quoteService = QuoteService();
+  final FavoritesService _favoritesService = FavoritesService(); // Add this
   bool _isUpdatingFavorite = false;
   bool _isDownloading = false;
 
@@ -32,13 +32,34 @@ class _QuoteDisplayCardState extends State<QuoteDisplayCard> {
       _isUpdatingFavorite = true;
     });
 
-    final success = await _quoteService.toggleFavorite(widget.quote);
+    print('🔄 Toggling favorite for quote: ${widget.quote.id}');
+    print('   Current status: ${widget.quote.isFavorite}');
+    
+    bool success = false;
+    
+    if (widget.quote.isFavorite) {
+      // Remove from favorites
+      print('❤️ Removing from favorites...');
+      success = await _favoritesService.removeFavoriteQuote(widget.quote.id);
+      if (success) {
+        widget.quote.isFavorite = false;
+        print('✅ Removed from favorites');
+      }
+    } else {
+      // Add to favorites
+      print('❤️ Adding to favorites...');
+      success = await _favoritesService.saveFavoriteQuote(widget.quote);
+      if (success) {
+        widget.quote.isFavorite = true;
+        print('✅ Added to favorites');
+      }
+    }
     
     if (success) {
       _showToast(widget.quote.isFavorite ? "Added to favorites" : "Removed from favorites");
       widget.onFavoriteChanged?.call();
     } else {
-      _showToast("Failed to update favorites");
+      _showToast("Failed to update favorites - check console logs");
     }
 
     setState(() {

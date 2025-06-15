@@ -8,6 +8,7 @@ import '../../features/auth/screens/premium_features_screen.dart';
 import '../../features/legal/screens/contact_us_screen.dart';
 import '../../features/legal/screens/privacy_policy_screen.dart';
 
+
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
 
@@ -47,7 +48,7 @@ class AppDrawer extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     const Text(
-                      'Quotable',
+                      'MyQuotable',
                       style: TextStyle(
                         color: AppColors.drawerHeaderTextColor,
                         fontSize: 24,
@@ -126,6 +127,9 @@ class AppDrawer extends StatelessWidget {
             },
           ),
           const Divider(color: AppColors.drawerDividerColor, indent: 16, endIndent: 16, height: 16),
+          
+         
+        
           _buildDrawerItem(
             context: context,
             icon: Icons.mail_outline,
